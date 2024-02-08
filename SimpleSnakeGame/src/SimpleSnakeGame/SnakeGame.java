@@ -347,10 +347,6 @@ public class SnakeGame extends JPanel implements ActionListener {
         }
     }
     
-    private float lerp(float start, float end, float t) {
-        return start + t * (end - start);
-    }
-    
     private void move() {
         if (lastKey == KeyEvent.VK_LEFT) {
             x[0] -= SCALE;
@@ -365,15 +361,21 @@ public class SnakeGame extends JPanel implements ActionListener {
             y[0] += SCALE;
         }
 
-        float lerpAmount = 0.1f;
-        realX[0] = lerp(realX[0], x[0], lerpAmount);
-        realY[0] = lerp(realY[0], y[0], lerpAmount);
+        if (x[0] >= WIDTH) {
+            x[0] = 0;
+        } else if (x[0] < 0) {
+            x[0] = WIDTH - SCALE;
+        }
+
+        if (y[0] >= HEIGHT) {
+            y[0] = 0;
+        } else if (y[0] < 0) {
+            y[0] = HEIGHT - SCALE;
+        }
 
         for (int z = dots; z > 0; z--) {
-            x[z] = x[z - 1];
-            y[z] = y[z - 1];
-            realX[z] = lerp(realX[z], x[z], lerpAmount);
-            realY[z] = lerp(realY[z], y[z], lerpAmount);
+            x[z] = x[(z - 1)];
+            y[z] = y[(z - 1)];
         }
     }
 
