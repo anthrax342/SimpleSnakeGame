@@ -134,6 +134,9 @@ public class SnakeGame extends JPanel implements ActionListener {
         }
         score = 0;
         locateApple();
+        blueAppleVisible = false;
+        blueAppleLastTime = 0;
+        blueAppleTimeLeft = 0;
         timer.start();
         restartButton.setVisible(false);
     }
@@ -225,7 +228,6 @@ public class SnakeGame extends JPanel implements ActionListener {
             gameOver(g);
         }
     }
-
     
     private void drawFPS(Graphics g) {
         String fpsText = "FPS: " + fps;
@@ -251,7 +253,6 @@ public class SnakeGame extends JPanel implements ActionListener {
         g.setFont(new Font("Helvetica", Font.BOLD, 14));
         g.drawString(fpsText, fpsX, fpsY);
     }
-
 
     private void drawScoreCollision(Graphics g) {
         FontMetrics metrics = g.getFontMetrics();
@@ -302,7 +303,6 @@ public class SnakeGame extends JPanel implements ActionListener {
         g.setFont(new Font("Helvetica", Font.BOLD, 12));
         g.drawString(timeText, textX, textY);
     }
-
 
     private void gameOver(Graphics g) {
         if (gameState == GameState.GAME_OVER) {
