@@ -53,7 +53,6 @@ public class SnakeGame extends JPanel implements ActionListener {
     private long hintStartTime;
     private final long HINT_DURATION = 3000;
     private boolean moving = false;
-    private boolean inGame = true;
     private boolean firstGame = true;
     private final float realX[] = new float[ALL_DOTS];
     private final float realY[] = new float[ALL_DOTS];
@@ -62,7 +61,6 @@ public class SnakeGame extends JPanel implements ActionListener {
     private GameState gameState = GameState.RUNNING;
     private Timer timer;
     private JButton restartButton;
-
     private boolean fpsCollision = false;
 
     public SnakeGame() {
@@ -103,7 +101,6 @@ public class SnakeGame extends JPanel implements ActionListener {
         timer.start();
         hintStartTime = System.currentTimeMillis();
 
-        inGame = true;
         restartButton = new JButton("Restart");
         restartButton.setBounds(WIDTH / 2 - 50, HEIGHT / 2 - 30, 100, 20);
         restartButton.addActionListener(e -> restartGame());
@@ -116,7 +113,7 @@ public class SnakeGame extends JPanel implements ActionListener {
             float alpha = (float) (Math.sin((System.currentTimeMillis() - animationStartTime) / 200.0) * 0.5 + 0.5);
             g.setColor(new Color(1.0f, 0.0f, 0.0f, alpha));
             g.setFont(new Font("Helvetica", Font.BOLD, 30));
-            String text = "Neuer Highscore!";
+            String text = "New Highscore!";
             FontMetrics metrics = g.getFontMetrics();
             int x = (WIDTH - metrics.stringWidth(text)) / 2;
             int y = HEIGHT / 3;
@@ -177,7 +174,7 @@ public class SnakeGame extends JPanel implements ActionListener {
 
             g.setColor(new Color(1.0f, 1.0f, 1.0f, alpha));
             g.setFont(new Font("Helvetica", Font.BOLD, 18));
-            String text = "Blaue Äpfel zählen doppelt!";
+            String text = "Blue apples count double!";
             FontMetrics metrics = g.getFontMetrics();
             int x = (WIDTH - metrics.stringWidth(text)) / 2;
             int y = HEIGHT / 2;
@@ -532,7 +529,7 @@ public class SnakeGame extends JPanel implements ActionListener {
         loadingFrame.dispose();
 
         SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("SimpleSnakeGame v0.6");
+            JFrame frame = new JFrame("SimpleSnakeGame v0.7");
             SnakeGame game = new SnakeGame();
             frame.add(game);
             frame.pack();
