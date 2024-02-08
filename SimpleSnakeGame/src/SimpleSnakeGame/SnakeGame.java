@@ -421,27 +421,51 @@ public class SnakeGame extends JPanel implements ActionListener {
         return false;
     }
 
-    private boolean isAppleCollidingWithText(int appleX, int appleY) {
-        FontMetrics metrics = getFontMetrics(getFont());
-        Rectangle scoreBounds = new Rectangle(5, HEIGHT - 14, metrics.stringWidth("Score: " + score), 14);
-        Rectangle fpsBounds = new Rectangle(5, 15 - metrics.getHeight(), metrics.stringWidth("FPS: " + fps), metrics.getHeight());
+    private boolean isAppleCollidingWithAnyText(int appleX, int appleY) {
+        if (showBlueAppleHint) {
+            FontMetrics hintMetrics = getFontMetrics(new Font("Helvetica", Font.BOLD, 18));
+            String hintText = "Blue apples count double!";
+            int hintTextWidth = hintMetrics.stringWidth(hintText);
+            int hintTextX = (WIDTH - hintTextWidth) / 2;
+            int hintTextY = HEIGHT / 2;
+            Rectangle hintTextBounds = new Rectangle(hintTextX, hintTextY - hintMetrics.getHeight(), hintTextWidth, hintMetrics.getHeight());
+            Rectangle appleBounds = new Rectangle(appleX, appleY, SCALE, SCALE);
+            if (appleBounds.intersects(hintTextBounds)) {
+                return true;
+            }
+        }
 
-        Rectangle appleBounds = new Rectangle(appleX, appleY, SCALE, SCALE);
-        return appleBounds.intersects(scoreBounds) || appleBounds.intersects(fpsBounds);
+        FontMetrics fpsMetrics = getFontMetrics(new Font("Helvetica", Font.BOLD, 14));
+        String fpsText = "FPS: " + fps;
+        Rectangle fpsBounds = new Rectangle(5, 15 - fpsMetrics.getHeight(), fpsMetrics.stringWidth(fpsText), fpsMetrics.getHeight());
+        if (new Rectangle(appleX, appleY, SCALE, SCALE).intersects(fpsBounds)) {
+            return true;
+        }
+
+        FontMetrics scoreMetrics = getFontMetrics(new Font("Helvetica", Font.BOLD, 14));
+        String scoreText = "Score: " + score;
+        Rectangle scoreBounds = new Rectangle(5, HEIGHT - 5 - scoreMetrics.getHeight(), scoreMetrics.stringWidth(scoreText), scoreMetrics.getHeight());
+        String bestScoreText = "Best Score: " + bestScore;
+        Rectangle bestScoreBounds = new Rectangle(WIDTH - 100, HEIGHT - 5 - scoreMetrics.getHeight(), scoreMetrics.stringWidth(bestScoreText), scoreMetrics.getHeight());
+        if (new Rectangle(appleX, appleY, SCALE, SCALE).intersects(scoreBounds) || new Rectangle(appleX, appleY, SCALE, SCALE).intersects(bestScoreBounds)) {
+            return true;
+        }
+
+        return false;
     }
 
     private void locateApple() {
         do {
             apple_x = (int) (Math.random() * RAND_POS) * SCALE;
             apple_y = (int) (Math.random() * RAND_POS) * SCALE;
-        } while (isAppleCollidingWithSnake(apple_x, apple_y) || isAppleCollidingWithText(apple_x, apple_y));
+        } while (isAppleCollidingWithSnake(apple_x, apple_y) || isAppleCollidingWithAnyText(apple_x, apple_y));
     }
 
     private void locateBlueApple() {
         do {
             blueApple_x = (int) (Math.random() * RAND_POS) * SCALE;
             blueApple_y = (int) (Math.random() * RAND_POS) * SCALE;
-        } while (isAppleCollidingWithSnake(blueApple_x, blueApple_y) || isAppleCollidingWithText(blueApple_x, blueApple_y));
+        } while (isAppleCollidingWithSnake(blueApple_x, blueApple_y) || isAppleCollidingWithAnyText(blueApple_x, blueApple_y));
     }
     
     private void updateBlueApple() {
