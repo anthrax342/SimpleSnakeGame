@@ -62,6 +62,7 @@ public class SnakeGame extends JPanel implements ActionListener {
     private Timer timer;
     private JButton restartButton;
     private boolean fpsCollision = false;
+    private Color[] segmentColors = new Color[ALL_DOTS];
 
     public SnakeGame() {
         addKeyListener(new TAdapter());
@@ -95,6 +96,7 @@ public class SnakeGame extends JPanel implements ActionListener {
             y[z] = 50;
             realX[z] = x[z];
             realY[z] = y[z];
+            segmentColors[z] = Color.green;
         }
         locateApple();
         timer = new Timer(DELAY, this);
@@ -198,12 +200,8 @@ public class SnakeGame extends JPanel implements ActionListener {
             g.fillOval(apple_x, apple_y, SCALE, SCALE);
 
             for (int z = 0; z < dots; z++) {
-                if (z == 0) {
-                    g.setColor(Color.green);
-                    g.fillRect(x[z], y[z], SCALE, SCALE);
-                } else {
-                    g.fillRect(x[z], y[z], SCALE, SCALE);
-                }
+                g.setColor(segmentColors[z]);
+                g.fillRect(x[z], y[z], SCALE, SCALE);
             }
 
             if (blueAppleVisible) {
@@ -327,16 +325,19 @@ public class SnakeGame extends JPanel implements ActionListener {
     }
 
     private void checkApple() {
-        if ((x[0] == apple_x) && (y[0] == apple_y)) {
-            dots++;
-            score++;
-            locateApple();
-        } else if (blueAppleVisible && (x[0] == blueApple_x) && (y[0] == blueApple_y)) {
-            dots += 2;
-            score += BLUE_APPLE_SCORE;
-            blueAppleVisible = false;
-            blueAppleLastTime = System.currentTimeMillis();
-        }
+    	if ((x[0] == apple_x) && (y[0] == apple_y)) {
+    	    dots++;
+    	    score++;
+    	    segmentColors[0] = Color.red;
+    	    locateApple();
+    	} else if (blueAppleVisible && (x[0] == blueApple_x) && (y[0] == blueApple_y)) {
+    	    dots += 2;
+    	    score += BLUE_APPLE_SCORE;
+    	    segmentColors[0] = Color.blue;
+    	    segmentColors[1] = Color.blue;
+    	    blueAppleVisible = false;
+    	    blueAppleLastTime = System.currentTimeMillis();
+    	}
 
         if (score > bestScore) {
             bestScore = score;
@@ -374,9 +375,11 @@ public class SnakeGame extends JPanel implements ActionListener {
         }
 
         for (int z = dots; z > 0; z--) {
+            segmentColors[z] = segmentColors[z - 1];
             x[z] = x[(z - 1)];
             y[z] = y[(z - 1)];
         }
+        segmentColors[0] = Color.green;
     }
 
     private void checkCollision() {
