@@ -53,7 +53,6 @@ public class SnakeGame extends JPanel implements ActionListener {
     private long hintStartTime;
     private final long HINT_DURATION = 3000;
     private boolean moving = false;
-    private boolean inGame = true;
     private boolean firstGame = true;
     private final float realX[] = new float[ALL_DOTS];
     private final float realY[] = new float[ALL_DOTS];
@@ -62,8 +61,8 @@ public class SnakeGame extends JPanel implements ActionListener {
     private GameState gameState = GameState.RUNNING;
     private Timer timer;
     private JButton restartButton;
-
     private boolean fpsCollision = false;
+    private Color[] segmentColors = new Color[ALL_DOTS];
 
     public SnakeGame() {
         addKeyListener(new TAdapter());
@@ -97,13 +96,13 @@ public class SnakeGame extends JPanel implements ActionListener {
             y[z] = 50;
             realX[z] = x[z];
             realY[z] = y[z];
+            segmentColors[z] = Color.green;
         }
         locateApple();
         timer = new Timer(DELAY, this);
         timer.start();
         hintStartTime = System.currentTimeMillis();
 
-        inGame = true;
         restartButton = new JButton("Restart");
         restartButton.setBounds(WIDTH / 2 - 50, HEIGHT / 2 - 30, 100, 20);
         restartButton.addActionListener(e -> restartGame());
@@ -116,7 +115,7 @@ public class SnakeGame extends JPanel implements ActionListener {
             float alpha = (float) (Math.sin((System.currentTimeMillis() - animationStartTime) / 200.0) * 0.5 + 0.5);
             g.setColor(new Color(1.0f, 0.0f, 0.0f, alpha));
             g.setFont(new Font("Helvetica", Font.BOLD, 30));
-            String text = "Neuer Highscore!";
+            String text = "New Highscore!";
             FontMetrics metrics = g.getFontMetrics();
             int x = (WIDTH - metrics.stringWidth(text)) / 2;
             int y = HEIGHT / 3;
@@ -137,6 +136,9 @@ public class SnakeGame extends JPanel implements ActionListener {
         }
         score = 0;
         locateApple();
+        blueAppleVisible = false;
+        blueAppleLastTime = 0;
+        blueAppleTimeLeft = 0;
         timer.start();
         restartButton.setVisible(false);
     }
@@ -177,7 +179,7 @@ public class SnakeGame extends JPanel implements ActionListener {
 
             g.setColor(new Color(1.0f, 1.0f, 1.0f, alpha));
             g.setFont(new Font("Helvetica", Font.BOLD, 18));
-            String text = "Blaue Äpfel zählen doppelt!";
+            String text = "Blue apples count double!";
             FontMetrics metrics = g.getFontMetrics();
             int x = (WIDTH - metrics.stringWidth(text)) / 2;
             int y = HEIGHT / 2;
@@ -198,12 +200,8 @@ public class SnakeGame extends JPanel implements ActionListener {
             g.fillOval(apple_x, apple_y, SCALE, SCALE);
 
             for (int z = 0; z < dots; z++) {
-                if (z == 0) {
-                    g.setColor(Color.green);
-                    g.fillRect(x[z], y[z], SCALE, SCALE);
-                } else {
-                    g.fillRect(x[z], y[z], SCALE, SCALE);
-                }
+                g.setColor(segmentColors[z]);
+                g.fillRect(x[z], y[z], SCALE, SCALE);
             }
 
             if (blueAppleVisible) {
@@ -228,7 +226,6 @@ public class SnakeGame extends JPanel implements ActionListener {
             gameOver(g);
         }
     }
-
     
     private void drawFPS(Graphics g) {
         String fpsText = "FPS: " + fps;
@@ -254,7 +251,6 @@ public class SnakeGame extends JPanel implements ActionListener {
         g.setFont(new Font("Helvetica", Font.BOLD, 14));
         g.drawString(fpsText, fpsX, fpsY);
     }
-
 
     private void drawScoreCollision(Graphics g) {
         FontMetrics metrics = g.getFontMetrics();
@@ -306,7 +302,6 @@ public class SnakeGame extends JPanel implements ActionListener {
         g.drawString(timeText, textX, textY);
     }
 
-
     private void gameOver(Graphics g) {
         if (gameState == GameState.GAME_OVER) {
             String msg = "Game Over";
@@ -330,16 +325,19 @@ public class SnakeGame extends JPanel implements ActionListener {
     }
 
     private void checkApple() {
-        if ((x[0] == apple_x) && (y[0] == apple_y)) {
-            dots++;
-            score++;
-            locateApple();
-        } else if (blueAppleVisible && (x[0] == blueApple_x) && (y[0] == blueApple_y)) {
-            dots += 2;
-            score += BLUE_APPLE_SCORE;
-            blueAppleVisible = false;
-            blueAppleLastTime = System.currentTimeMillis();
-        }
+    	if ((x[0] == apple_x) && (y[0] == apple_y)) {
+    	    dots++;
+    	    score++;
+    	    segmentColors[0] = Color.red;
+    	    locateApple();
+    	} else if (blueAppleVisible && (x[0] == blueApple_x) && (y[0] == blueApple_y)) {
+    	    dots += 2;
+    	    score += BLUE_APPLE_SCORE;
+    	    segmentColors[0] = Color.blue;
+    	    segmentColors[1] = Color.blue;
+    	    blueAppleVisible = false;
+    	    blueAppleLastTime = System.currentTimeMillis();
+    	}
 
         if (score > bestScore) {
             bestScore = score;
@@ -348,10 +346,6 @@ public class SnakeGame extends JPanel implements ActionListener {
                 setNewHighScore();
             }
         }
-    }
-    
-    private float lerp(float start, float end, float t) {
-        return start + t * (end - start);
     }
     
     private void move() {
@@ -368,16 +362,24 @@ public class SnakeGame extends JPanel implements ActionListener {
             y[0] += SCALE;
         }
 
-        float lerpAmount = 0.1f;
-        realX[0] = lerp(realX[0], x[0], lerpAmount);
-        realY[0] = lerp(realY[0], y[0], lerpAmount);
+        if (x[0] >= WIDTH) {
+            x[0] = 0;
+        } else if (x[0] < 0) {
+            x[0] = WIDTH - SCALE;
+        }
+
+        if (y[0] >= HEIGHT) {
+            y[0] = 0;
+        } else if (y[0] < 0) {
+            y[0] = HEIGHT - SCALE;
+        }
 
         for (int z = dots; z > 0; z--) {
-            x[z] = x[z - 1];
-            y[z] = y[z - 1];
-            realX[z] = lerp(realX[z], x[z], lerpAmount);
-            realY[z] = lerp(realY[z], y[z], lerpAmount);
+            segmentColors[z] = segmentColors[z - 1];
+            x[z] = x[(z - 1)];
+            y[z] = y[(z - 1)];
         }
+        segmentColors[0] = Color.green;
     }
 
     private void checkCollision() {
@@ -424,27 +426,51 @@ public class SnakeGame extends JPanel implements ActionListener {
         return false;
     }
 
-    private boolean isAppleCollidingWithText(int appleX, int appleY) {
-        FontMetrics metrics = getFontMetrics(getFont());
-        Rectangle scoreBounds = new Rectangle(5, HEIGHT - 14, metrics.stringWidth("Score: " + score), 14);
-        Rectangle fpsBounds = new Rectangle(5, 15 - metrics.getHeight(), metrics.stringWidth("FPS: " + fps), metrics.getHeight());
+    private boolean isAppleCollidingWithAnyText(int appleX, int appleY) {
+        if (showBlueAppleHint) {
+            FontMetrics hintMetrics = getFontMetrics(new Font("Helvetica", Font.BOLD, 18));
+            String hintText = "Blue apples count double!";
+            int hintTextWidth = hintMetrics.stringWidth(hintText);
+            int hintTextX = (WIDTH - hintTextWidth) / 2;
+            int hintTextY = HEIGHT / 2;
+            Rectangle hintTextBounds = new Rectangle(hintTextX, hintTextY - hintMetrics.getHeight(), hintTextWidth, hintMetrics.getHeight());
+            Rectangle appleBounds = new Rectangle(appleX, appleY, SCALE, SCALE);
+            if (appleBounds.intersects(hintTextBounds)) {
+                return true;
+            }
+        }
 
-        Rectangle appleBounds = new Rectangle(appleX, appleY, SCALE, SCALE);
-        return appleBounds.intersects(scoreBounds) || appleBounds.intersects(fpsBounds);
+        FontMetrics fpsMetrics = getFontMetrics(new Font("Helvetica", Font.BOLD, 14));
+        String fpsText = "FPS: " + fps;
+        Rectangle fpsBounds = new Rectangle(5, 15 - fpsMetrics.getHeight(), fpsMetrics.stringWidth(fpsText), fpsMetrics.getHeight());
+        if (new Rectangle(appleX, appleY, SCALE, SCALE).intersects(fpsBounds)) {
+            return true;
+        }
+
+        FontMetrics scoreMetrics = getFontMetrics(new Font("Helvetica", Font.BOLD, 14));
+        String scoreText = "Score: " + score;
+        Rectangle scoreBounds = new Rectangle(5, HEIGHT - 5 - scoreMetrics.getHeight(), scoreMetrics.stringWidth(scoreText), scoreMetrics.getHeight());
+        String bestScoreText = "Best Score: " + bestScore;
+        Rectangle bestScoreBounds = new Rectangle(WIDTH - 100, HEIGHT - 5 - scoreMetrics.getHeight(), scoreMetrics.stringWidth(bestScoreText), scoreMetrics.getHeight());
+        if (new Rectangle(appleX, appleY, SCALE, SCALE).intersects(scoreBounds) || new Rectangle(appleX, appleY, SCALE, SCALE).intersects(bestScoreBounds)) {
+            return true;
+        }
+
+        return false;
     }
 
     private void locateApple() {
         do {
             apple_x = (int) (Math.random() * RAND_POS) * SCALE;
             apple_y = (int) (Math.random() * RAND_POS) * SCALE;
-        } while (isAppleCollidingWithSnake(apple_x, apple_y) || isAppleCollidingWithText(apple_x, apple_y));
+        } while (isAppleCollidingWithSnake(apple_x, apple_y) || isAppleCollidingWithAnyText(apple_x, apple_y));
     }
 
     private void locateBlueApple() {
         do {
             blueApple_x = (int) (Math.random() * RAND_POS) * SCALE;
             blueApple_y = (int) (Math.random() * RAND_POS) * SCALE;
-        } while (isAppleCollidingWithSnake(blueApple_x, blueApple_y) || isAppleCollidingWithText(blueApple_x, blueApple_y));
+        } while (isAppleCollidingWithSnake(blueApple_x, blueApple_y) || isAppleCollidingWithAnyText(blueApple_x, blueApple_y));
     }
     
     private void updateBlueApple() {
@@ -532,7 +558,7 @@ public class SnakeGame extends JPanel implements ActionListener {
         loadingFrame.dispose();
 
         SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("SimpleSnakeGame v0.6");
+            JFrame frame = new JFrame("SimpleSnakeGame v0.7");
             SnakeGame game = new SnakeGame();
             frame.add(game);
             frame.pack();
