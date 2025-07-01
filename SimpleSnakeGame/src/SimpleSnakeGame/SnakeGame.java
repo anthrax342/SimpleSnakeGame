@@ -252,7 +252,6 @@ public class SnakeGame extends JPanel implements ActionListener {
 
         if (gameState == GameState.RUNNING) {
             drawGame(g);
-            drawFPS(g);
         }
         else {
             if (gameWon && isVictoryAnimation) {
@@ -337,35 +336,9 @@ public class SnakeGame extends JPanel implements ActionListener {
             g.drawString("Best Score: " + bestScore, WIDTH - 100, HEIGHT - 5);
         }
 
-        drawFPS(g);
         drawScoreCollision(g);
 
         Toolkit.getDefaultToolkit().sync();
-    }
-    
-    private void drawFPS(Graphics g) {
-        String fpsText = "FPS: " + fps;
-        FontMetrics metrics = g.getFontMetrics();
-        int textWidth = metrics.stringWidth(fpsText);
-        int textHeight = metrics.getHeight();
-        int fpsX = 5;
-        int fpsY = 15;
-
-        Rectangle fpsBounds = new Rectangle(fpsX, fpsY - textHeight, textWidth, textHeight);
-        fpsCollision = false;
-
-        for (int i = 0; i < dots; i++) {
-            Rectangle snakeBounds = new Rectangle(x[i], y[i], SCALE, SCALE);
-
-            if (fpsBounds.intersects(snakeBounds)) {
-                fpsCollision = true;
-                break;
-            }
-        }
-
-        g.setColor(fpsCollision ? Color.red : Color.white);
-        g.setFont(new Font("Helvetica", Font.BOLD, 14));
-        g.drawString(fpsText, fpsX, fpsY);
     }
 
     private void drawScoreCollision(Graphics g) {
