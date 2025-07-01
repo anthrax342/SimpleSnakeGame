@@ -17,8 +17,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.Random;
 
 public class SnakeGame extends JPanel implements ActionListener {
+	private java.util.List<Particle> particles = new java.util.ArrayList<>();
     private enum GameState {
-        RUNNING, GAME_OVER
+        RUNNING, GAME_OVER, PAUSED
     }
 
     private final int WIDTH = 300;
@@ -59,15 +60,23 @@ public class SnakeGame extends JPanel implements ActionListener {
     private Thread renderThread;
     private volatile boolean running = true;
     private GameState gameState = GameState.RUNNING;
+    private boolean gameWon = false;
     private Timer timer;
     private JButton restartButton;
     private boolean fpsCollision = false;
     private Color[] segmentColors = new Color[ALL_DOTS];
+    private boolean isVictoryAnimation = false;
+    private long victoryAnimationStart = 0;
+    private final long VICTORY_ANIMATION_DURATION = 3000;
+    private JButton pauseExitButton;
+    private JButton pauseRestartButton;
+    private JButton resumeButton;
 
     public SnakeGame() {
         addKeyListener(new TAdapter());
         setBackground(Color.black);
         setFocusable(true);
+        requestFocusInWindow();
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setDoubleBuffered(true);
         initRendering();
@@ -108,6 +117,45 @@ public class SnakeGame extends JPanel implements ActionListener {
         restartButton.addActionListener(e -> restartGame());
         this.add(restartButton);
         restartButton.setVisible(false);
+        
+        pauseExitButton = new JButton("Exit");
+        pauseExitButton.setBounds(WIDTH / 2 - 50, HEIGHT / 2, 100, 20);
+        pauseExitButton.addActionListener(e -> System.exit(0));
+        this.add(pauseExitButton);
+        pauseExitButton.setVisible(false);
+        
+        pauseRestartButton = new JButton("Restart");
+        pauseRestartButton.setBounds(WIDTH / 2 - 50, HEIGHT / 2 - 30, 100, 20);
+        pauseRestartButton.addActionListener(e -> restartGame());
+        this.add(pauseRestartButton);
+        pauseRestartButton.setVisible(false);
+        
+        resumeButton = new JButton("Resume");
+        resumeButton.setBounds(WIDTH / 2 - 50, HEIGHT / 2 - 60, 100, 20);
+        resumeButton.addActionListener(e -> resumeGame());
+        this.add(resumeButton);
+        resumeButton.setVisible(false);
+    }
+    
+    private void pauseGame() {
+    	if (gameState == GameState.RUNNING) {
+    		gameState = GameState.PAUSED;
+    		timer.stop();
+    		resumeButton.setVisible(true);
+    		pauseExitButton.setVisible(true);
+    		pauseRestartButton.setVisible(true);
+    		restartButton.setVisible(false);
+    	}
+    }
+    
+    private void resumeGame() {
+    	if (gameState == GameState.PAUSED) {
+    		gameState = GameState.RUNNING;
+    		timer.start();
+    		resumeButton.setVisible(false);
+    		pauseExitButton.setVisible(false);
+    		pauseRestartButton.setVisible(false);
+    	}
     }
     
     private void playNewHighScoreAnimation(Graphics g) {
@@ -124,28 +172,69 @@ public class SnakeGame extends JPanel implements ActionListener {
             isNewHighScore = false;
         }
     }
+    
+    private void playVictoryAnimation(Graphics g) {
+        long t = System.currentTimeMillis() - victoryAnimationStart;
+        if (t > VICTORY_ANIMATION_DURATION) {
+            isVictoryAnimation = false;
+            return;
+        }
+        float alpha = 0.6f + 0.4f * (float)Math.sin(t / 200.0);
+        g.setColor(new Color(1.0f, 0.8f, 0.0f, alpha));
+        g.setFont(new Font("Helvetica", Font.BOLD, 40));
+        String text = "Victory!";
+        FontMetrics m = g.getFontMetrics();
+        int tx = (WIDTH - m.stringWidth(text))/2;
+        int ty = HEIGHT/2;
+        g.drawString(text, tx, ty);
+    }
 
     private void restartGame() {
+    	restartButton.setVisible(false);
+    	pauseExitButton.setVisible(false);
+    	pauseRestartButton.setVisible(false);
+    	
         gameState = GameState.RUNNING;
+        gameWon = false;
         firstGame = false;
         isNewHighScoreThisGame = false;
+        moving = false;
+        
+        lastKey = KeyEvent.VK_RIGHT;
+        
         dots = 3;
         for (int z = 0; z < dots; z++) {
             x[z] = 50 - z * 10;
             y[z] = 50;
         }
+        
         score = 0;
         locateApple();
         blueAppleVisible = false;
         blueAppleLastTime = 0;
         blueAppleTimeLeft = 0;
+        
         timer.start();
-        restartButton.setVisible(false);
     }
 
     @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
+        
+        if (gameState == GameState.PAUSED) {
+        	g.setColor(new Color(0, 0, 0, 150));
+        	g.fillRect(0, 0, WIDTH, HEIGHT);
+        	
+        	g.setColor(Color.white);
+        	g.setFont(new Font("Helvetica", Font.BOLD, 36));
+        	String msg = "PAUSED";
+        	FontMetrics fm = g.getFontMetrics();
+        	int tx = (WIDTH - fm.stringWidth(msg)) / 2;
+        	int ty = HEIGHT / 3;
+        	g.drawString(msg, tx, ty);
+        	
+        	return;
+        }
 
         long currentTime = System.currentTimeMillis();
         if (currentTime - lastFpsTime > 1000) {
@@ -161,9 +250,35 @@ public class SnakeGame extends JPanel implements ActionListener {
         drawHint(g);
         drawGame(g);
 
-        g.setColor(fpsCollision ? Color.red : Color.white);
-        g.setFont(new Font("Helvetica", Font.BOLD, 14));
-        g.drawString("FPS: " + fps, 5, 15);
+        if (gameState == GameState.RUNNING) {
+            drawGame(g);
+        }
+        else {
+            if (gameWon && isVictoryAnimation) {
+                playVictoryAnimation(g);
+            }
+            else {
+                gameOver(g);
+            }
+        }
+        
+        updateAndDrawParticles(g);
+    }
+    
+    private void updateAndDrawParticles(Graphics g) {
+    	java.util.Iterator<Particle> it = particles.iterator();
+    	while (it.hasNext()) {
+    		Particle p = it.next();
+    		if (!p.isAlive()) {
+    			it.remove();
+    			continue;
+    		}
+    		
+    		p.update();
+    		
+    		g.setColor(p.color);
+    		g.fillRect((int)p.x, (int)p.y, 2, 2);
+    	}
     }
     
     private void drawHint(Graphics g) {
@@ -195,61 +310,35 @@ public class SnakeGame extends JPanel implements ActionListener {
     }
 
     private void drawGame(Graphics g) {
-        if (gameState == GameState.RUNNING) {
-            g.setColor(Color.red);
-            g.fillOval(apple_x, apple_y, SCALE, SCALE);
+        if (gameState != GameState.RUNNING) {
+            return;
+        } 
+        
+        g.setColor(Color.red);
+        g.fillOval(apple_x, apple_y, SCALE, SCALE);
 
-            for (int z = 0; z < dots; z++) {
-                g.setColor(segmentColors[z]);
-                g.fillRect(x[z], y[z], SCALE, SCALE);
-            }
-
-            if (blueAppleVisible) {
-                g.setColor(Color.blue);
-                g.fillOval(blueApple_x, blueApple_y, SCALE, SCALE);
-                drawBlueAppleTimer(g);
-            }
-
-            g.setColor(Color.white);
-            g.setFont(new Font("Helvetica", Font.BOLD, 14));
-            g.drawString("Score: " + score, 5, HEIGHT - 5);
-
-            if (bestScore > 0) {
-                g.drawString("Best Score: " + bestScore, WIDTH - 100, HEIGHT - 5);
-            }
-
-            drawFPS(g);
-            drawScoreCollision(g);
-
-            Toolkit.getDefaultToolkit().sync();
-        } else {
-            gameOver(g);
-        }
-    }
-    
-    private void drawFPS(Graphics g) {
-        String fpsText = "FPS: " + fps;
-        FontMetrics metrics = g.getFontMetrics();
-        int textWidth = metrics.stringWidth(fpsText);
-        int textHeight = metrics.getHeight();
-        int fpsX = 5;
-        int fpsY = 15;
-
-        Rectangle fpsBounds = new Rectangle(fpsX, fpsY - textHeight, textWidth, textHeight);
-        fpsCollision = false;
-
-        for (int i = 0; i < dots; i++) {
-            Rectangle snakeBounds = new Rectangle(x[i], y[i], SCALE, SCALE);
-
-            if (fpsBounds.intersects(snakeBounds)) {
-                fpsCollision = true;
-                break;
-            }
+        for (int z = 0; z < dots; z++) {
+            g.setColor(segmentColors[z]);
+            g.fillRect(x[z], y[z], SCALE, SCALE);
         }
 
-        g.setColor(fpsCollision ? Color.red : Color.white);
+        if (blueAppleVisible) {
+            g.setColor(Color.blue);
+            g.fillOval(blueApple_x, blueApple_y, SCALE, SCALE);
+            drawBlueAppleTimer(g);
+        }
+
+        g.setColor(Color.white);
         g.setFont(new Font("Helvetica", Font.BOLD, 14));
-        g.drawString(fpsText, fpsX, fpsY);
+        g.drawString("Score: " + score, 5, HEIGHT - 5);
+
+        if (bestScore > 0) {
+            g.drawString("Best Score: " + bestScore, WIDTH - 100, HEIGHT - 5);
+        }
+
+        drawScoreCollision(g);
+
+        Toolkit.getDefaultToolkit().sync();
     }
 
     private void drawScoreCollision(Graphics g) {
@@ -304,7 +393,7 @@ public class SnakeGame extends JPanel implements ActionListener {
 
     private void gameOver(Graphics g) {
         if (gameState == GameState.GAME_OVER) {
-            String msg = "Game Over";
+            String msg = gameWon ? "Victory!" : "Game Over";
             String scoreMsg = "Score: " + score;
             String bestScoreMsg = "Best Score: " + bestScore;
 
@@ -316,7 +405,11 @@ public class SnakeGame extends JPanel implements ActionListener {
             FontMetrics metrics = getFontMetrics(font);
             g.setColor(Color.white);
             g.setFont(font);
-            g.drawString(msg, (WIDTH - metrics.stringWidth(msg)) / 2, HEIGHT / 2 - 20);
+
+            int xMsg = (WIDTH - metrics.stringWidth(msg)) / 2;
+            int yMsg = HEIGHT / 2 - 20;
+            g.drawString(msg, xMsg, yMsg);
+
             g.drawString(scoreMsg, (WIDTH - metrics.stringWidth(scoreMsg)) / 2, HEIGHT / 2 + 20);
             g.drawString(bestScoreMsg, (WIDTH - metrics.stringWidth(bestScoreMsg)) / 2, HEIGHT / 2 + 60);
 
@@ -329,7 +422,14 @@ public class SnakeGame extends JPanel implements ActionListener {
     	    dots++;
     	    score++;
     	    segmentColors[0] = Color.red;
+    	    spawnParticles(apple_x + SCALE / 2, apple_y + SCALE / 2, Color.red);
     	    locateApple();
+    	    
+    	    if (dots == ALL_DOTS)
+    	    {
+    	    	triggerVictory();
+    	    	return;
+    	    }
     	} else if (blueAppleVisible && (x[0] == blueApple_x) && (y[0] == blueApple_y)) {
     	    dots += 2;
     	    score += BLUE_APPLE_SCORE;
@@ -337,6 +437,7 @@ public class SnakeGame extends JPanel implements ActionListener {
     	    segmentColors[1] = Color.blue;
     	    blueAppleVisible = false;
     	    blueAppleLastTime = System.currentTimeMillis();
+    	    spawnParticles(blueApple_x + SCALE / 2, blueApple_y + SCALE / 2, Color.blue);
     	}
 
         if (score > bestScore) {
@@ -347,6 +448,28 @@ public class SnakeGame extends JPanel implements ActionListener {
             }
         }
     }
+    
+    private void spawnParticles(int centerX, int centerY, Color color) {
+    	for (int i = 0; i < 15; i++) {
+    		double angle = Math.random() * 2 * Math.PI;
+    		double speed = Math.random() * 2 + 1;
+    		float dx = (float) (Math.cos(angle) * speed);
+    		float dy = (float) (Math.sin(angle) * speed);
+    		int life = 20 + (int)(Math.random() * 10);
+    		particles.add(new Particle(centerX, centerY, dx, dy, life, color));
+     	}
+    }
+    
+    private void triggerVictory() {
+        gameWon = true;
+        gameState = GameState.GAME_OVER;
+        timer.stop();
+        restartButton.setVisible(true);
+        
+        isVictoryAnimation = true;
+        victoryAnimationStart = System.currentTimeMillis();
+    }
+
     
     private void move() {
         if (lastKey == KeyEvent.VK_LEFT) {
@@ -361,7 +484,7 @@ public class SnakeGame extends JPanel implements ActionListener {
         if (lastKey == KeyEvent.VK_DOWN) {
             y[0] += SCALE;
         }
-
+        
         if (x[0] >= WIDTH) {
             x[0] = 0;
         } else if (x[0] < 0) {
@@ -519,20 +642,36 @@ public class SnakeGame extends JPanel implements ActionListener {
     }
     
     private class TAdapter extends KeyAdapter {
-        @Override
+    	@Override
         public void keyPressed(KeyEvent e) {
             int key = e.getKeyCode();
+            
+            if (key == KeyEvent.VK_ESCAPE) {
+            	if (gameState == GameState.RUNNING) {
+            		pauseGame();
+            	} else if (gameState == GameState.PAUSED) {
+            		resumeGame();
+            	}
+            	return;
+            }
+            
+            //Debug Victory Screen button
+            if (key == KeyEvent.VK_V) {
+                triggerVictory();
+                return;
+            }
+
             if (gameState == GameState.RUNNING) {
                 if (key == KeyEvent.VK_LEFT && lastKey != KeyEvent.VK_RIGHT) {
                     lastKey = KeyEvent.VK_LEFT;
                 }
-                if (key == KeyEvent.VK_RIGHT && lastKey != KeyEvent.VK_LEFT) {
+                else if (key == KeyEvent.VK_RIGHT && lastKey != KeyEvent.VK_LEFT) {
                     lastKey = KeyEvent.VK_RIGHT;
                 }
-                if (key == KeyEvent.VK_UP && lastKey != KeyEvent.VK_DOWN) {
+                else if (key == KeyEvent.VK_UP && lastKey != KeyEvent.VK_DOWN) {
                     lastKey = KeyEvent.VK_UP;
                 }
-                if (key == KeyEvent.VK_DOWN && lastKey != KeyEvent.VK_UP) {
+                else if (key == KeyEvent.VK_DOWN && lastKey != KeyEvent.VK_UP) {
                     lastKey = KeyEvent.VK_DOWN;
                 }
             }
@@ -558,7 +697,7 @@ public class SnakeGame extends JPanel implements ActionListener {
         loadingFrame.dispose();
 
         SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("SimpleSnakeGame v0.7");
+            JFrame frame = new JFrame("SimpleSnakeGame v0.8");
             SnakeGame game = new SnakeGame();
             frame.add(game);
             frame.pack();
@@ -573,4 +712,47 @@ public class SnakeGame extends JPanel implements ActionListener {
             System.out.println("Loaded in: " + elapsedTime + " ms");
         });
     }
+}
+
+class Particle {
+	float x, y;
+	float dx, dy;
+	int life;
+	Color color;
+	
+	public Particle(float x, float y, float dx, float dy, int life, Color color) {
+		this.x = x;
+		this.y = y;
+		this.dx = dx;
+		this.dy = dy;
+		this.life = life;
+		this.color = color;
+	}
+	
+	public void update() {
+		x += dx;
+		y += dy;
+		
+		if (x < 0) {
+			x = 0;
+			dx = -dx;
+		} else if (x > 300) {
+			x = 300;
+			dx = -dx;
+		}
+		
+		if (y < 0) {
+			y = 0;
+			dy = -dy;
+		} else if (y > 300) {
+			y = 300;
+			dy = -dy;
+		}
+		
+		life--;
+	}
+	
+	public boolean isAlive() {
+		return life > 0;
+	}
 }
