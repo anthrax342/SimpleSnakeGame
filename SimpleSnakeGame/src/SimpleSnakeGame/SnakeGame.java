@@ -759,6 +759,23 @@ class Particle {
 	public void update() {
 		x += dx;
 		y += dy;
+		
+		if (x < 0) {
+			x = 0;
+			dx = -dx;
+		} else if (x > 300) {
+			x = 300;
+			dx = -dx;
+		}
+		
+		if (y < 0) {
+			y = 0;
+			dy = -dy;
+		} else if (y > 300) {
+			y = 300;
+			dy = -dy;
+		}
+		
 		life--;
 	}
 	
