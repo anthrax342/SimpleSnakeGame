@@ -1,6 +1,6 @@
-Works with Java JDK 21 (LTS) and 24:
-https://www.oracle.com/java/technologies/downloads/#java21
-https://www.oracle.com/java/technologies/downloads/#java24
+Works with Java JDK 21 (LTS) and 24:<br>
+https://www.oracle.com/java/technologies/downloads/#java21<br>
+https://www.oracle.com/java/technologies/downloads/#java24<br>
 
 On Linux it works with java-21-openjdk and 24 (or oracle java see website). Not Headless. No Native Wayland support (working with XWayland).
 
