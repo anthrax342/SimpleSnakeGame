@@ -64,11 +64,15 @@ public class SnakeGame extends JPanel implements ActionListener {
     private JButton restartButton;
     private boolean fpsCollision = false;
     private Color[] segmentColors = new Color[ALL_DOTS];
+    private boolean isVictoryAnimation = false;
+    private long victoryAnimationStart = 0;
+    private final long VICTORY_ANIMATION_DURATION = 3000;
 
     public SnakeGame() {
         addKeyListener(new TAdapter());
         setBackground(Color.black);
         setFocusable(true);
+        requestFocusInWindow();
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setDoubleBuffered(true);
         initRendering();
@@ -125,6 +129,22 @@ public class SnakeGame extends JPanel implements ActionListener {
             isNewHighScore = false;
         }
     }
+    
+    private void playVictoryAnimation(Graphics g) {
+        long t = System.currentTimeMillis() - victoryAnimationStart;
+        if (t > VICTORY_ANIMATION_DURATION) {
+            isVictoryAnimation = false;
+            return;
+        }
+        float alpha = 0.6f + 0.4f * (float)Math.sin(t / 200.0);
+        g.setColor(new Color(1.0f, 0.8f, 0.0f, alpha));
+        g.setFont(new Font("Helvetica", Font.BOLD, 40));
+        String text = "Victory!";
+        FontMetrics m = g.getFontMetrics();
+        int tx = (WIDTH - m.stringWidth(text))/2;
+        int ty = HEIGHT/2;
+        g.drawString(text, tx, ty);
+    }
 
     private void restartGame() {
         gameState = GameState.RUNNING;
@@ -163,9 +183,18 @@ public class SnakeGame extends JPanel implements ActionListener {
         drawHint(g);
         drawGame(g);
 
-        g.setColor(fpsCollision ? Color.red : Color.white);
-        g.setFont(new Font("Helvetica", Font.BOLD, 14));
-        g.drawString("FPS: " + fps, 5, 15);
+        if (gameState == GameState.RUNNING) {
+            drawGame(g);
+            drawFPS(g);
+        }
+        else {
+            if (gameWon && isVictoryAnimation) {
+                playVictoryAnimation(g);
+            }
+            else {
+                gameOver(g);
+            }
+        }
     }
     
     private void drawHint(Graphics g) {
@@ -197,36 +226,36 @@ public class SnakeGame extends JPanel implements ActionListener {
     }
 
     private void drawGame(Graphics g) {
-        if (gameState == GameState.RUNNING) {
-            g.setColor(Color.red);
-            g.fillOval(apple_x, apple_y, SCALE, SCALE);
+        if (gameState != GameState.RUNNING) {
+            return;
+        } 
+        
+        g.setColor(Color.red);
+        g.fillOval(apple_x, apple_y, SCALE, SCALE);
 
-            for (int z = 0; z < dots; z++) {
-                g.setColor(segmentColors[z]);
-                g.fillRect(x[z], y[z], SCALE, SCALE);
-            }
-
-            if (blueAppleVisible) {
-                g.setColor(Color.blue);
-                g.fillOval(blueApple_x, blueApple_y, SCALE, SCALE);
-                drawBlueAppleTimer(g);
-            }
-
-            g.setColor(Color.white);
-            g.setFont(new Font("Helvetica", Font.BOLD, 14));
-            g.drawString("Score: " + score, 5, HEIGHT - 5);
-
-            if (bestScore > 0) {
-                g.drawString("Best Score: " + bestScore, WIDTH - 100, HEIGHT - 5);
-            }
-
-            drawFPS(g);
-            drawScoreCollision(g);
-
-            Toolkit.getDefaultToolkit().sync();
-        } else {
-            gameOver(g);
+        for (int z = 0; z < dots; z++) {
+            g.setColor(segmentColors[z]);
+            g.fillRect(x[z], y[z], SCALE, SCALE);
         }
+
+        if (blueAppleVisible) {
+            g.setColor(Color.blue);
+            g.fillOval(blueApple_x, blueApple_y, SCALE, SCALE);
+            drawBlueAppleTimer(g);
+        }
+
+        g.setColor(Color.white);
+        g.setFont(new Font("Helvetica", Font.BOLD, 14));
+        g.drawString("Score: " + score, 5, HEIGHT - 5);
+
+        if (bestScore > 0) {
+            g.drawString("Best Score: " + bestScore, WIDTH - 100, HEIGHT - 5);
+        }
+
+        drawFPS(g);
+        drawScoreCollision(g);
+
+        Toolkit.getDefaultToolkit().sync();
     }
     
     private void drawFPS(Graphics g) {
@@ -365,6 +394,9 @@ public class SnakeGame extends JPanel implements ActionListener {
         gameState = GameState.GAME_OVER;
         timer.stop();
         restartButton.setVisible(true);
+        
+        isVictoryAnimation = true;
+        victoryAnimationStart = System.currentTimeMillis();
     }
 
     
@@ -381,7 +413,7 @@ public class SnakeGame extends JPanel implements ActionListener {
         if (lastKey == KeyEvent.VK_DOWN) {
             y[0] += SCALE;
         }
-
+        
         if (x[0] >= WIDTH) {
             x[0] = 0;
         } else if (x[0] < 0) {
@@ -539,23 +571,30 @@ public class SnakeGame extends JPanel implements ActionListener {
     }
     
     private class TAdapter extends KeyAdapter {
-        @Override
+    	@Override
         public void keyPressed(KeyEvent e) {
             int key = e.getKeyCode();
+            
+            //Debug Victory Screen button
+            if (key == KeyEvent.VK_V) {
+                triggerVictory();
+                return;
+            }
+
             if (gameState == GameState.RUNNING) {
                 if (key == KeyEvent.VK_LEFT && lastKey != KeyEvent.VK_RIGHT) {
                     lastKey = KeyEvent.VK_LEFT;
                 }
-                if (key == KeyEvent.VK_RIGHT && lastKey != KeyEvent.VK_LEFT) {
+                else if (key == KeyEvent.VK_RIGHT && lastKey != KeyEvent.VK_LEFT) {
                     lastKey = KeyEvent.VK_RIGHT;
                 }
-                if (key == KeyEvent.VK_UP && lastKey != KeyEvent.VK_DOWN) {
+                else if (key == KeyEvent.VK_UP && lastKey != KeyEvent.VK_DOWN) {
                     lastKey = KeyEvent.VK_UP;
                 }
-                if (key == KeyEvent.VK_DOWN && lastKey != KeyEvent.VK_UP) {
+                else if (key == KeyEvent.VK_DOWN && lastKey != KeyEvent.VK_UP) {
                     lastKey = KeyEvent.VK_DOWN;
                 }
-                }
+            }
         }
     }
 
