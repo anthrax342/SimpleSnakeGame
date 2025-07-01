@@ -17,6 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Random;
 
 public class SnakeGame extends JPanel implements ActionListener {
+	private java.util.List<Particle> particles = new java.util.ArrayList<>();
     private enum GameState {
         RUNNING, GAME_OVER, PAUSED
     }
@@ -261,6 +262,24 @@ public class SnakeGame extends JPanel implements ActionListener {
                 gameOver(g);
             }
         }
+        
+        updateAndDrawParticles(g);
+    }
+    
+    private void updateAndDrawParticles(Graphics g) {
+    	java.util.Iterator<Particle> it = particles.iterator();
+    	while (it.hasNext()) {
+    		Particle p = it.next();
+    		if (!p.isAlive()) {
+    			it.remove();
+    			continue;
+    		}
+    		
+    		p.update();
+    		
+    		g.setColor(p.color);
+    		g.fillRect((int)p.x, (int)p.y, 2, 2);
+    	}
     }
     
     private void drawHint(Graphics g) {
@@ -430,6 +449,7 @@ public class SnakeGame extends JPanel implements ActionListener {
     	    dots++;
     	    score++;
     	    segmentColors[0] = Color.red;
+    	    spawnParticles(apple_x + SCALE / 2, apple_y + SCALE / 2, Color.red);
     	    locateApple();
     	    
     	    if (dots == ALL_DOTS)
@@ -444,6 +464,7 @@ public class SnakeGame extends JPanel implements ActionListener {
     	    segmentColors[1] = Color.blue;
     	    blueAppleVisible = false;
     	    blueAppleLastTime = System.currentTimeMillis();
+    	    spawnParticles(blueApple_x + SCALE / 2, blueApple_y + SCALE / 2, Color.blue);
     	}
 
         if (score > bestScore) {
@@ -453,6 +474,17 @@ public class SnakeGame extends JPanel implements ActionListener {
                 setNewHighScore();
             }
         }
+    }
+    
+    private void spawnParticles(int centerX, int centerY, Color color) {
+    	for (int i = 0; i < 15; i++) {
+    		double angle = Math.random() * 2 * Math.PI;
+    		double speed = Math.random() * 2 + 1;
+    		float dx = (float) (Math.cos(angle) * speed);
+    		float dy = (float) (Math.sin(angle) * speed);
+    		int life = 20 + (int)(Math.random() * 10);
+    		particles.add(new Particle(centerX, centerY, dx, dy, life, color));
+     	}
     }
     
     private void triggerVictory() {
@@ -707,4 +739,30 @@ public class SnakeGame extends JPanel implements ActionListener {
             System.out.println("Loaded in: " + elapsedTime + " ms");
         });
     }
+}
+
+class Particle {
+	float x, y;
+	float dx, dy;
+	int life;
+	Color color;
+	
+	public Particle(float x, float y, float dx, float dy, int life, Color color) {
+		this.x = x;
+		this.y = y;
+		this.dx = dx;
+		this.dy = dy;
+		this.life = life;
+		this.color = color;
+	}
+	
+	public void update() {
+		x += dx;
+		y += dy;
+		life--;
+	}
+	
+	public boolean isAlive() {
+		return life > 0;
+	}
 }
