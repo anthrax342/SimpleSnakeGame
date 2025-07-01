@@ -18,7 +18,7 @@ import java.util.Random;
 
 public class SnakeGame extends JPanel implements ActionListener {
     private enum GameState {
-        RUNNING, GAME_OVER
+        RUNNING, GAME_OVER, PAUSED
     }
 
     private final int WIDTH = 300;
@@ -67,6 +67,8 @@ public class SnakeGame extends JPanel implements ActionListener {
     private boolean isVictoryAnimation = false;
     private long victoryAnimationStart = 0;
     private final long VICTORY_ANIMATION_DURATION = 3000;
+    private JButton pauseExitButton;
+    private JButton pauseRestartButton;
 
     public SnakeGame() {
         addKeyListener(new TAdapter());
@@ -113,6 +115,37 @@ public class SnakeGame extends JPanel implements ActionListener {
         restartButton.addActionListener(e -> restartGame());
         this.add(restartButton);
         restartButton.setVisible(false);
+        
+        pauseExitButton = new JButton("Exit");
+        pauseExitButton.setBounds(WIDTH / 2 - 50, HEIGHT / 2, 100, 20);
+        pauseExitButton.addActionListener(e -> System.exit(0));
+        this.add(pauseExitButton);
+        pauseExitButton.setVisible(false);
+        
+        pauseRestartButton = new JButton("Restart");
+        pauseRestartButton.setBounds(WIDTH / 2 - 50, HEIGHT / 2 - 30, 100, 20);
+        pauseRestartButton.addActionListener(e -> restartGame());
+        this.add(pauseRestartButton);
+        pauseRestartButton.setVisible(false);
+    }
+    
+    private void pauseGame() {
+    	if (gameState == GameState.RUNNING) {
+    		gameState = GameState.PAUSED;
+    		timer.stop();
+    		pauseExitButton.setVisible(true);
+    		pauseRestartButton.setVisible(true);
+    		restartButton.setVisible(false);
+    	}
+    }
+    
+    private void resumeGame() {
+    	if (gameState == GameState.PAUSED) {
+    		gameState = GameState.RUNNING;
+    		timer.start();
+    		pauseExitButton.setVisible(false);
+    		pauseRestartButton.setVisible(false);
+    	}
     }
     
     private void playNewHighScoreAnimation(Graphics g) {
@@ -147,27 +180,51 @@ public class SnakeGame extends JPanel implements ActionListener {
     }
 
     private void restartGame() {
+    	restartButton.setVisible(false);
+    	pauseExitButton.setVisible(false);
+    	pauseRestartButton.setVisible(false);
+    	
         gameState = GameState.RUNNING;
         gameWon = false;
         firstGame = false;
         isNewHighScoreThisGame = false;
+        moving = false;
+        
+        lastKey = KeyEvent.VK_RIGHT;
+        
         dots = 3;
         for (int z = 0; z < dots; z++) {
             x[z] = 50 - z * 10;
             y[z] = 50;
         }
+        
         score = 0;
         locateApple();
         blueAppleVisible = false;
         blueAppleLastTime = 0;
         blueAppleTimeLeft = 0;
+        
         timer.start();
-        restartButton.setVisible(false);
     }
 
     @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
+        
+        if (gameState == GameState.PAUSED) {
+        	g.setColor(new Color(0, 0, 0, 150));
+        	g.fillRect(0, 0, WIDTH, HEIGHT);
+        	
+        	g.setColor(Color.white);
+        	g.setFont(new Font("Helvetica", Font.BOLD, 36));
+        	String msg = "PAUSED";
+        	FontMetrics fm = g.getFontMetrics();
+        	int tx = (WIDTH - fm.stringWidth(msg)) / 2;
+        	int ty = HEIGHT / 3;
+        	g.drawString(msg, tx, ty);
+        	
+        	return;
+        }
 
         long currentTime = System.currentTimeMillis();
         if (currentTime - lastFpsTime > 1000) {
@@ -575,6 +632,15 @@ public class SnakeGame extends JPanel implements ActionListener {
         public void keyPressed(KeyEvent e) {
             int key = e.getKeyCode();
             
+            if (key == KeyEvent.VK_ESCAPE) {
+            	if (gameState == GameState.RUNNING) {
+            		pauseGame();
+            	} else if (gameState == GameState.PAUSED) {
+            		resumeGame();
+            	}
+            	return;
+            }
+            
             //Debug Victory Screen button
             if (key == KeyEvent.VK_V) {
                 triggerVictory();
@@ -617,7 +683,7 @@ public class SnakeGame extends JPanel implements ActionListener {
         loadingFrame.dispose();
 
         SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("SimpleSnakeGame v0.7");
+            JFrame frame = new JFrame("SimpleSnakeGame v0.8");
             SnakeGame game = new SnakeGame();
             frame.add(game);
             frame.pack();
