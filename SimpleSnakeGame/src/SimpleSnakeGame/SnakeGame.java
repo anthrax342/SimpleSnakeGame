@@ -59,6 +59,7 @@ public class SnakeGame extends JPanel implements ActionListener {
     private Thread renderThread;
     private volatile boolean running = true;
     private GameState gameState = GameState.RUNNING;
+    private boolean gameWon = false;
     private Timer timer;
     private JButton restartButton;
     private boolean fpsCollision = false;
@@ -127,6 +128,7 @@ public class SnakeGame extends JPanel implements ActionListener {
 
     private void restartGame() {
         gameState = GameState.RUNNING;
+        gameWon = false;
         firstGame = false;
         isNewHighScoreThisGame = false;
         dots = 3;
@@ -304,7 +306,7 @@ public class SnakeGame extends JPanel implements ActionListener {
 
     private void gameOver(Graphics g) {
         if (gameState == GameState.GAME_OVER) {
-            String msg = "Game Over";
+            String msg = gameWon ? "Victory!" : "Game Over";
             String scoreMsg = "Score: " + score;
             String bestScoreMsg = "Best Score: " + bestScore;
 
@@ -316,7 +318,11 @@ public class SnakeGame extends JPanel implements ActionListener {
             FontMetrics metrics = getFontMetrics(font);
             g.setColor(Color.white);
             g.setFont(font);
-            g.drawString(msg, (WIDTH - metrics.stringWidth(msg)) / 2, HEIGHT / 2 - 20);
+
+            int xMsg = (WIDTH - metrics.stringWidth(msg)) / 2;
+            int yMsg = HEIGHT / 2 - 20;
+            g.drawString(msg, xMsg, yMsg);
+
             g.drawString(scoreMsg, (WIDTH - metrics.stringWidth(scoreMsg)) / 2, HEIGHT / 2 + 20);
             g.drawString(bestScoreMsg, (WIDTH - metrics.stringWidth(bestScoreMsg)) / 2, HEIGHT / 2 + 60);
 
@@ -330,6 +336,12 @@ public class SnakeGame extends JPanel implements ActionListener {
     	    score++;
     	    segmentColors[0] = Color.red;
     	    locateApple();
+    	    
+    	    if (dots == ALL_DOTS)
+    	    {
+    	    	triggerVictory();
+    	    	return;
+    	    }
     	} else if (blueAppleVisible && (x[0] == blueApple_x) && (y[0] == blueApple_y)) {
     	    dots += 2;
     	    score += BLUE_APPLE_SCORE;
@@ -347,6 +359,14 @@ public class SnakeGame extends JPanel implements ActionListener {
             }
         }
     }
+    
+    private void triggerVictory() {
+        gameWon = true;
+        gameState = GameState.GAME_OVER;
+        timer.stop();
+        restartButton.setVisible(true);
+    }
+
     
     private void move() {
         if (lastKey == KeyEvent.VK_LEFT) {
@@ -535,7 +555,7 @@ public class SnakeGame extends JPanel implements ActionListener {
                 if (key == KeyEvent.VK_DOWN && lastKey != KeyEvent.VK_UP) {
                     lastKey = KeyEvent.VK_DOWN;
                 }
-            }
+                }
         }
     }
 
