@@ -69,6 +69,7 @@ public class SnakeGame extends JPanel implements ActionListener {
     private final long VICTORY_ANIMATION_DURATION = 3000;
     private JButton pauseExitButton;
     private JButton pauseRestartButton;
+    private JButton resumeButton;
 
     public SnakeGame() {
         addKeyListener(new TAdapter());
@@ -127,12 +128,19 @@ public class SnakeGame extends JPanel implements ActionListener {
         pauseRestartButton.addActionListener(e -> restartGame());
         this.add(pauseRestartButton);
         pauseRestartButton.setVisible(false);
+        
+        resumeButton = new JButton("Resume");
+        resumeButton.setBounds(WIDTH / 2 - 50, HEIGHT / 2 - 60, 100, 20);
+        resumeButton.addActionListener(e -> resumeGame());
+        this.add(resumeButton);
+        resumeButton.setVisible(false);
     }
     
     private void pauseGame() {
     	if (gameState == GameState.RUNNING) {
     		gameState = GameState.PAUSED;
     		timer.stop();
+    		resumeButton.setVisible(true);
     		pauseExitButton.setVisible(true);
     		pauseRestartButton.setVisible(true);
     		restartButton.setVisible(false);
@@ -143,6 +151,7 @@ public class SnakeGame extends JPanel implements ActionListener {
     	if (gameState == GameState.PAUSED) {
     		gameState = GameState.RUNNING;
     		timer.start();
+    		resumeButton.setVisible(false);
     		pauseExitButton.setVisible(false);
     		pauseRestartButton.setVisible(false);
     	}
