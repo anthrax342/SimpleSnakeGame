@@ -191,6 +191,7 @@ public class SnakeGame extends JPanel implements ActionListener {
 
     private void restartGame() {
     	restartButton.setVisible(false);
+	resumeButton.setVisible(false);
     	pauseExitButton.setVisible(false);
     	pauseRestartButton.setVisible(false);
     	
