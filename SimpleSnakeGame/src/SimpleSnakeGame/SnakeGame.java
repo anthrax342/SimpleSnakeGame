@@ -698,7 +698,7 @@ public class SnakeGame extends JPanel implements ActionListener {
         loadingFrame.dispose();
 
         SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("SimpleSnakeGame v0.8");
+            JFrame frame = new JFrame("SimpleSnakeGame v0.9");
             SnakeGame game = new SnakeGame();
             frame.add(game);
             frame.pack();
