@@ -12,3 +12,7 @@ java 24<br>
 
 To execute<br>
 `java -jar SimpleSnakeGame_v(xxx).jar`
+
+<a href="http://with-eclipse.github.io/" target="_blank">
+<img alt="with-Eclipse logo" src="http://with-eclipse.github.io/with-eclipse-0.jpg" />
+</a>
