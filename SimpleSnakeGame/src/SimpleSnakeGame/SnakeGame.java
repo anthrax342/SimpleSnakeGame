@@ -41,6 +41,8 @@ public class SnakeGame extends JPanel implements ActionListener {
     private int fps = 0;
     private int blueApple_x;
     private int blueApple_y;
+    private int currentDirection;
+    private int pendingDirection;
     private boolean isNewHighScore = false;
     private long animationStartTime;
     private final long ANIMATION_DURATION = 3000;
@@ -101,6 +103,10 @@ public class SnakeGame extends JPanel implements ActionListener {
     public void initGame() {
         dots = 3;
         score = 0;
+        currentDirection = KeyEvent.VK_RIGHT;
+        pendingDirection = currentDirection;
+        lastKey = currentDirection;
+        moving = false;
         for (int z = 0; z < dots; z++) {
             x[z] = 50 - z * 10;
             y[z] = 50;
@@ -202,7 +208,10 @@ public class SnakeGame extends JPanel implements ActionListener {
         isNewHighScoreThisGame = false;
         moving = false;
         
-        lastKey = KeyEvent.VK_RIGHT;
+        currentDirection = KeyEvent.VK_RIGHT;
+        pendingDirection = currentDirection;
+        lastKey = currentDirection;
+        moving = false;
         
         dots = 3;
         for (int z = 0; z < dots; z++) {
@@ -472,21 +481,20 @@ public class SnakeGame extends JPanel implements ActionListener {
         victoryAnimationStart = System.currentTimeMillis();
     }
 
-    
     private void move() {
-        if (lastKey == KeyEvent.VK_LEFT) {
+        if (currentDirection == KeyEvent.VK_LEFT) {
             x[0] -= SCALE;
         }
-        if (lastKey == KeyEvent.VK_RIGHT) {
+        if (currentDirection == KeyEvent.VK_RIGHT) {
             x[0] += SCALE;
         }
-        if (lastKey == KeyEvent.VK_UP) {
+        if (currentDirection == KeyEvent.VK_UP) {
             y[0] -= SCALE;
         }
-        if (lastKey == KeyEvent.VK_DOWN) {
+        if (currentDirection == KeyEvent.VK_DOWN) {
             y[0] += SCALE;
         }
-        
+
         if (x[0] >= WIDTH) {
             x[0] = 0;
         } else if (x[0] < 0) {
@@ -641,6 +649,9 @@ public class SnakeGame extends JPanel implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
+    	currentDirection = pendingDirection;
+    	lastKey = currentDirection;
+    	
         if (gameState == GameState.RUNNING && !moving) {
             moving = true;
             checkApple();
@@ -680,17 +691,17 @@ public class SnakeGame extends JPanel implements ActionListener {
             }
 
             if (gameState == GameState.RUNNING) {
-                if (key == KeyEvent.VK_LEFT && lastKey != KeyEvent.VK_RIGHT) {
-                    lastKey = KeyEvent.VK_LEFT;
+                if (key == KeyEvent.VK_LEFT && currentDirection != KeyEvent.VK_RIGHT) {
+                    pendingDirection = KeyEvent.VK_LEFT;
                 }
-                else if (key == KeyEvent.VK_RIGHT && lastKey != KeyEvent.VK_LEFT) {
-                    lastKey = KeyEvent.VK_RIGHT;
+                else if (key == KeyEvent.VK_RIGHT && currentDirection != KeyEvent.VK_LEFT) {
+                    pendingDirection = KeyEvent.VK_RIGHT;
                 }
-                else if (key == KeyEvent.VK_UP && lastKey != KeyEvent.VK_DOWN) {
-                    lastKey = KeyEvent.VK_UP;
+                else if (key == KeyEvent.VK_UP && currentDirection != KeyEvent.VK_DOWN) {
+                    pendingDirection = KeyEvent.VK_UP;
                 }
-                else if (key == KeyEvent.VK_DOWN && lastKey != KeyEvent.VK_UP) {
-                    lastKey = KeyEvent.VK_DOWN;
+                else if (key == KeyEvent.VK_DOWN && currentDirection != KeyEvent.VK_UP) {
+                    pendingDirection = KeyEvent.VK_DOWN;
                 }
             }
         }
