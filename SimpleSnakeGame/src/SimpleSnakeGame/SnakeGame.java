@@ -71,6 +71,7 @@ public class SnakeGame extends JPanel implements ActionListener {
     private JButton pauseExitButton;
     private JButton pauseRestartButton;
     private JButton resumeButton;
+    private long blueAppleSpawnDelay = 0;
 
     public SnakeGame() {
         addKeyListener(new TAdapter());
@@ -413,8 +414,8 @@ public class SnakeGame extends JPanel implements ActionListener {
 
             g.drawString(scoreMsg, (WIDTH - metrics.stringWidth(scoreMsg)) / 2, HEIGHT / 2 + 20);
             g.drawString(bestScoreMsg, (WIDTH - metrics.stringWidth(bestScoreMsg)) / 2, HEIGHT / 2 + 60);
-
-            restartButton.setVisible(true);
+            
+            restartButton.setVisible(true);         
         }
     }
 
@@ -598,21 +599,38 @@ public class SnakeGame extends JPanel implements ActionListener {
     }
     
     private void updateBlueApple() {
-        if (score >= 5) {
-            if (!blueAppleVisible && System.currentTimeMillis() - blueAppleLastTime > randomTime(7000, 15000)) {
+        if (score < 5) {
+            return;
+        }
+
+        long currentTime = System.currentTimeMillis();
+        long delta = currentTime - blueAppleLastTime;
+        if (delta < 0) delta = 0;
+
+        if (!blueAppleVisible) {
+            if (blueAppleSpawnDelay == 0) {
+                blueAppleSpawnDelay = randomTime(7000, 15000);
+            }
+
+            if (delta >= blueAppleSpawnDelay) {
                 locateBlueApple();
                 blueAppleVisible = true;
-                blueAppleLastTime = System.currentTimeMillis();
+                blueAppleLastTime = currentTime;
                 blueAppleTimeLeft = randomTime(5000, 8000);
-            } else if (blueAppleVisible) {
-                long currentTime = System.currentTimeMillis();
-                if (currentTime - blueAppleLastTime > blueAppleTimeLeft) {
-                    blueAppleVisible = false;
-                    blueAppleLastTime = currentTime;
-                } else {
-                    blueAppleTimeLeft -= currentTime - blueAppleLastTime;
-                    blueAppleLastTime = currentTime;
-                }
+                blueAppleSpawnDelay = 0;
+            } else {
+                blueAppleSpawnDelay -= delta;
+                blueAppleLastTime = currentTime;
+            }
+        } else {
+            if (delta >= blueAppleTimeLeft) {
+                blueAppleVisible = false;
+                blueAppleLastTime = currentTime;
+                blueAppleTimeLeft = 0;
+                blueAppleSpawnDelay = 0;
+            } else {
+                blueAppleTimeLeft -= delta;
+                blueAppleLastTime = currentTime;
             }
         }
     }
@@ -656,7 +674,6 @@ public class SnakeGame extends JPanel implements ActionListener {
             	return;
             }
             
-            //Debug Victory Screen button
             if (key == KeyEvent.VK_V) {
                 triggerVictory();
                 return;
@@ -698,7 +715,7 @@ public class SnakeGame extends JPanel implements ActionListener {
         loadingFrame.dispose();
 
         SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("SimpleSnakeGame v0.9b");
+            JFrame frame = new JFrame("SimpleSnakeGame v0.9");
             SnakeGame game = new SnakeGame();
             frame.add(game);
             frame.pack();
