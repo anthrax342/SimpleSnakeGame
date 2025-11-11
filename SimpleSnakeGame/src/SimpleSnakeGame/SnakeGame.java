@@ -1,23 +1,18 @@
 package SimpleSnakeGame;
 
 import javax.swing.*;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JWindow;
-import javax.swing.SwingConstants;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.sql.Date;
+import java.awt.image.BufferedImage;
+import java.util.Date;
 import java.text.SimpleDateFormat;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Random;
 
 public class SnakeGame extends JPanel implements ActionListener {
-	private java.util.List<Particle> particles = new java.util.ArrayList<>();
+    private java.util.List<Particle> particles = new java.util.ArrayList<>();
     private enum GameState {
         RUNNING, GAME_OVER, PAUSED
     }
@@ -59,13 +54,10 @@ public class SnakeGame extends JPanel implements ActionListener {
     private boolean firstGame = true;
     private final float realX[] = new float[ALL_DOTS];
     private final float realY[] = new float[ALL_DOTS];
-    private Thread renderThread;
-    private volatile boolean running = true;
     private GameState gameState = GameState.RUNNING;
     private boolean gameWon = false;
     private Timer timer;
     private JButton restartButton;
-    private boolean fpsCollision = false;
     private Color[] segmentColors = new Color[ALL_DOTS];
     private boolean isVictoryAnimation = false;
     private long victoryAnimationStart = 0;
@@ -74,6 +66,12 @@ public class SnakeGame extends JPanel implements ActionListener {
     private JButton pauseRestartButton;
     private JButton resumeButton;
     private long blueAppleSpawnDelay = 0;
+    private FontMetrics defaultFontMetrics;
+    private FontMetrics boldFontMetrics;
+    private FontMetrics smallFontMetrics;
+    private FontMetrics victoryFontMetrics;
+    private BufferedImage bufferImage;
+    private Graphics2D bufferGraphics;
 
     public SnakeGame() {
         addKeyListener(new TAdapter());
@@ -82,22 +80,18 @@ public class SnakeGame extends JPanel implements ActionListener {
         requestFocusInWindow();
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setDoubleBuffered(true);
-        initRendering();
+        Font defaultFont = new Font("Helvetica", Font.PLAIN, 14);
+        Font boldFont = new Font("Helvetica", Font.BOLD, 14);
+        Font smallFont = new Font("Helvetica", Font.BOLD, 12);
+        Font victoryFont = new Font("Helvetica", Font.BOLD, 40);
+        defaultFontMetrics = getFontMetrics(defaultFont);
+        boldFontMetrics = getFontMetrics(boldFont);
+        smallFontMetrics = getFontMetrics(smallFont);
+        victoryFontMetrics = getFontMetrics(victoryFont);
+        bufferImage = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
+        bufferGraphics = bufferImage.createGraphics();
+        bufferGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         initGame();
-    }
-    
-    private void initRendering() {
-        renderThread = new Thread(() -> {
-            while (running) {
-                repaint();
-                try {
-                    Thread.sleep(16);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-        renderThread.start();
     }
 
     public void initGame() {
@@ -145,24 +139,24 @@ public class SnakeGame extends JPanel implements ActionListener {
     }
     
     private void pauseGame() {
-    	if (gameState == GameState.RUNNING) {
-    		gameState = GameState.PAUSED;
-    		timer.stop();
-    		resumeButton.setVisible(true);
-    		pauseExitButton.setVisible(true);
-    		pauseRestartButton.setVisible(true);
-    		restartButton.setVisible(false);
-    	}
+        if (gameState == GameState.RUNNING) {
+            gameState = GameState.PAUSED;
+            timer.stop();
+            resumeButton.setVisible(true);
+            pauseExitButton.setVisible(true);
+            pauseRestartButton.setVisible(true);
+            restartButton.setVisible(false);
+        }
     }
     
     private void resumeGame() {
-    	if (gameState == GameState.PAUSED) {
-    		gameState = GameState.RUNNING;
-    		timer.start();
-    		resumeButton.setVisible(false);
-    		pauseExitButton.setVisible(false);
-    		pauseRestartButton.setVisible(false);
-    	}
+        if (gameState == GameState.PAUSED) {
+            gameState = GameState.RUNNING;
+            timer.start();
+            resumeButton.setVisible(false);
+            pauseExitButton.setVisible(false);
+            pauseRestartButton.setVisible(false);
+        }
     }
     
     private void playNewHighScoreAnimation(Graphics g) {
@@ -197,11 +191,11 @@ public class SnakeGame extends JPanel implements ActionListener {
     }
 
     private void restartGame() {
-    	restartButton.setVisible(false);
-	resumeButton.setVisible(false);
-    	pauseExitButton.setVisible(false);
-    	pauseRestartButton.setVisible(false);
-    	
+        restartButton.setVisible(false);
+        resumeButton.setVisible(false);
+        pauseExitButton.setVisible(false);
+        pauseRestartButton.setVisible(false);
+        
         gameState = GameState.RUNNING;
         gameWon = false;
         firstGame = false;
@@ -232,64 +226,57 @@ public class SnakeGame extends JPanel implements ActionListener {
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
         
+        bufferGraphics.setColor(Color.black);
+        bufferGraphics.fillRect(0, 0, WIDTH, HEIGHT);
+        
         if (gameState == GameState.PAUSED) {
-        	g.setColor(new Color(0, 0, 0, 150));
-        	g.fillRect(0, 0, WIDTH, HEIGHT);
-        	
-        	g.setColor(Color.white);
-        	g.setFont(new Font("Helvetica", Font.BOLD, 36));
-        	String msg = "PAUSED";
-        	FontMetrics fm = g.getFontMetrics();
-        	int tx = (WIDTH - fm.stringWidth(msg)) / 2;
-        	int ty = HEIGHT / 3;
-        	g.drawString(msg, tx, ty);
-        	
-        	return;
-        }
-
-        long currentTime = System.currentTimeMillis();
-        if (currentTime - lastFpsTime > 1000) {
-            fps = frameCount;
-            frameCount = 0;
-            lastFpsTime = currentTime;
-        }
-        frameCount++;
-        if (isNewHighScore) {
-            playNewHighScoreAnimation(g);
-        }
-
-        drawHint(g);
-        drawGame(g);
-
-        if (gameState == GameState.RUNNING) {
-            drawGame(g);
-        }
-        else {
-            if (gameWon && isVictoryAnimation) {
-                playVictoryAnimation(g);
+            bufferGraphics.setColor(new Color(0, 0, 0, 150));
+            bufferGraphics.fillRect(0, 0, WIDTH, HEIGHT);
+            
+            bufferGraphics.setColor(Color.white);
+            bufferGraphics.setFont(new Font("Helvetica", Font.BOLD, 36));
+            String msg = "PAUSED";
+            FontMetrics fm = bufferGraphics.getFontMetrics();
+            int tx = (WIDTH - fm.stringWidth(msg)) / 2;
+            int ty = HEIGHT / 3;
+            bufferGraphics.drawString(msg, tx, ty);
+        } else {
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastFpsTime >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastFpsTime = currentTime;
             }
-            else {
-                gameOver(g);
+            frameCount++;
+            if (isNewHighScore) {
+                playNewHighScoreAnimation(bufferGraphics);
             }
+
+            drawHint(bufferGraphics);
+
+            if (gameState == GameState.RUNNING) {
+                drawGame(bufferGraphics);
+            } else {
+                if (gameWon && isVictoryAnimation) {
+                    playVictoryAnimation(bufferGraphics);
+                } else {
+                    gameOver(bufferGraphics);
+                }
+            }
+            
+            updateAndDrawParticles(bufferGraphics);
         }
         
-        updateAndDrawParticles(g);
+        g.drawImage(bufferImage, 0, 0, this);
     }
     
     private void updateAndDrawParticles(Graphics g) {
-    	java.util.Iterator<Particle> it = particles.iterator();
-    	while (it.hasNext()) {
-    		Particle p = it.next();
-    		if (!p.isAlive()) {
-    			it.remove();
-    			continue;
-    		}
-    		
-    		p.update();
-    		
-    		g.setColor(p.color);
-    		g.fillRect((int)p.x, (int)p.y, 2, 2);
-    	}
+        particles.removeIf(p -> !p.isAlive());
+        for (Particle p : particles) {
+            p.update();
+            g.setColor(p.color);
+            g.fillRect((int)p.x, (int)p.y, 2, 2);
+        }
     }
     
     private void drawHint(Graphics g) {
@@ -314,7 +301,7 @@ public class SnakeGame extends JPanel implements ActionListener {
         }
     }
     private void setNewHighScore() {
-    	if (!isNewHighScore) {
+        if (!isNewHighScore) {
             isNewHighScore = true;
             animationStartTime = System.currentTimeMillis();
         }
@@ -353,7 +340,7 @@ public class SnakeGame extends JPanel implements ActionListener {
     }
 
     private void drawScoreCollision(Graphics g) {
-        FontMetrics metrics = g.getFontMetrics();
+        FontMetrics metrics = boldFontMetrics;
         Rectangle scoreTextBounds = new Rectangle(5, HEIGHT - 14, metrics.stringWidth("Score: " + score), 14);
         Rectangle bestScoreTextBounds = new Rectangle(WIDTH - 100, HEIGHT - 14, metrics.stringWidth("Best Score: " + bestScore), 14);
 
@@ -378,7 +365,7 @@ public class SnakeGame extends JPanel implements ActionListener {
         int timeLeftInSeconds = (int) Math.ceil(blueAppleTimeLeft / 1000.0);
         String timeText = timeLeftInSeconds + "s";
 
-        FontMetrics metrics = g.getFontMetrics();
+        FontMetrics metrics = smallFontMetrics;
         int textWidth = metrics.stringWidth(timeText);
         int textHeight = metrics.getHeight();
 
@@ -429,27 +416,26 @@ public class SnakeGame extends JPanel implements ActionListener {
     }
 
     private void checkApple() {
-    	if ((x[0] == apple_x) && (y[0] == apple_y)) {
-    	    dots++;
-    	    score++;
-    	    segmentColors[0] = Color.red;
-    	    spawnParticles(apple_x + SCALE / 2, apple_y + SCALE / 2, Color.red);
-    	    locateApple();
-    	    
-    	    if (dots == ALL_DOTS)
-    	    {
-    	    	triggerVictory();
-    	    	return;
-    	    }
-    	} else if (blueAppleVisible && (x[0] == blueApple_x) && (y[0] == blueApple_y)) {
-    	    dots += 2;
-    	    score += BLUE_APPLE_SCORE;
-    	    segmentColors[0] = Color.blue;
-    	    segmentColors[1] = Color.blue;
-    	    blueAppleVisible = false;
-    	    blueAppleLastTime = System.currentTimeMillis();
-    	    spawnParticles(blueApple_x + SCALE / 2, blueApple_y + SCALE / 2, Color.blue);
-    	}
+        if ((x[0] == apple_x) && (y[0] == apple_y)) {
+            dots++;
+            score++;
+            segmentColors[0] = Color.red;
+            spawnParticles(apple_x + SCALE / 2, apple_y + SCALE / 2, Color.red);
+            locateApple();
+            
+            if (dots == ALL_DOTS) {
+                triggerVictory();
+                return;
+            }
+        } else if (blueAppleVisible && (x[0] == blueApple_x) && (y[0] == blueApple_y)) {
+            dots += 2;
+            score += BLUE_APPLE_SCORE;
+            segmentColors[0] = Color.blue;
+            segmentColors[1] = Color.blue;
+            blueAppleVisible = false;
+            blueAppleLastTime = System.currentTimeMillis();
+            spawnParticles(blueApple_x + SCALE / 2, blueApple_y + SCALE / 2, Color.blue);
+        }
 
         if (score > bestScore) {
             bestScore = score;
@@ -461,14 +447,14 @@ public class SnakeGame extends JPanel implements ActionListener {
     }
     
     private void spawnParticles(int centerX, int centerY, Color color) {
-    	for (int i = 0; i < 15; i++) {
-    		double angle = Math.random() * 2 * Math.PI;
-    		double speed = Math.random() * 2 + 1;
-    		float dx = (float) (Math.cos(angle) * speed);
-    		float dy = (float) (Math.sin(angle) * speed);
-    		int life = 20 + (int)(Math.random() * 10);
-    		particles.add(new Particle(centerX, centerY, dx, dy, life, color));
-     	}
+        for (int i = 0; i < 15; i++) {
+            double angle = Math.random() * 2 * Math.PI;
+            double speed = Math.random() * 2 + 1;
+            float dx = (float) (Math.cos(angle) * speed);
+            float dy = (float) (Math.sin(angle) * speed);
+            int life = 20 + (int)(Math.random() * 10);
+            particles.add(new Particle(centerX, centerY, dx, dy, life, color));
+        }
     }
     
     private void triggerVictory() {
@@ -517,8 +503,8 @@ public class SnakeGame extends JPanel implements ActionListener {
 
     private void checkCollision() {
         if (moving) {
-            for (int z = dots; z > 0; z--) {
-                if ((z > 4) && (x[0] == x[z]) && (y[0] == y[z])) {
+            for (int z = dots - 1; z > 3; z--) {
+                if ((x[0] == x[z]) && (y[0] == y[z])) {
                     gameState = GameState.GAME_OVER;
                     return;
                 }
@@ -580,7 +566,7 @@ public class SnakeGame extends JPanel implements ActionListener {
             return true;
         }
 
-        FontMetrics scoreMetrics = getFontMetrics(new Font("Helvetica", Font.BOLD, 14));
+        FontMetrics scoreMetrics = boldFontMetrics;
         String scoreText = "Score: " + score;
         Rectangle scoreBounds = new Rectangle(5, HEIGHT - 5 - scoreMetrics.getHeight(), scoreMetrics.stringWidth(scoreText), scoreMetrics.getHeight());
         String bestScoreText = "Best Score: " + bestScore;
@@ -649,9 +635,9 @@ public class SnakeGame extends JPanel implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-    	currentDirection = pendingDirection;
-    	lastKey = currentDirection;
-    	
+        currentDirection = pendingDirection;
+        lastKey = currentDirection;
+        
         if (gameState == GameState.RUNNING && !moving) {
             moving = true;
             checkApple();
@@ -661,28 +647,19 @@ public class SnakeGame extends JPanel implements ActionListener {
             moving = false;
         }
     }
-
-    public void stopRendering() {
-        running = false;
-        try {
-            renderThread.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
     
     private class TAdapter extends KeyAdapter {
-    	@Override
+        @Override
         public void keyPressed(KeyEvent e) {
             int key = e.getKeyCode();
             
             if (key == KeyEvent.VK_ESCAPE) {
-            	if (gameState == GameState.RUNNING) {
-            		pauseGame();
-            	} else if (gameState == GameState.PAUSED) {
-            		resumeGame();
-            	}
-            	return;
+                if (gameState == GameState.RUNNING) {
+                    pauseGame();
+                } else if (gameState == GameState.PAUSED) {
+                    resumeGame();
+                }
+                return;
             }
             
             if (key == KeyEvent.VK_V) {
@@ -708,10 +685,10 @@ public class SnakeGame extends JPanel implements ActionListener {
     }
 
     public static void main(String[] args) {
-    	long startTime = System.currentTimeMillis();
-    	SimpleDateFormat sdf = new SimpleDateFormat("ss.SSS");
+        long startTime = System.currentTimeMillis();
+        SimpleDateFormat sdf = new SimpleDateFormat("ss.SSS");
         String formattedStartTime = sdf.format(new Date(startTime));
-        System.out.println("Laoding ...");
+        System.out.println("Loading ...");
         JFrame loadingFrame = new JFrame("Loading");
         JPanel loadingPanel = new JPanel();
         JLabel loadingLabel = new JLabel("Loading...");
@@ -744,44 +721,44 @@ public class SnakeGame extends JPanel implements ActionListener {
 }
 
 class Particle {
-	float x, y;
-	float dx, dy;
-	int life;
-	Color color;
-	
-	public Particle(float x, float y, float dx, float dy, int life, Color color) {
-		this.x = x;
-		this.y = y;
-		this.dx = dx;
-		this.dy = dy;
-		this.life = life;
-		this.color = color;
-	}
-	
-	public void update() {
-		x += dx;
-		y += dy;
-		
-		if (x < 0) {
-			x = 0;
-			dx = -dx;
-		} else if (x > 300) {
-			x = 300;
-			dx = -dx;
-		}
-		
-		if (y < 0) {
-			y = 0;
-			dy = -dy;
-		} else if (y > 300) {
-			y = 300;
-			dy = -dy;
-		}
-		
-		life--;
-	}
-	
-	public boolean isAlive() {
-		return life > 0;
-	}
+    float x, y;
+    float dx, dy;
+    int life;
+    Color color;
+    
+    public Particle(float x, float y, float dx, float dy, int life, Color color) {
+        this.x = x;
+        this.y = y;
+        this.dx = dx;
+        this.dy = dy;
+        this.life = life;
+        this.color = color;
+    }
+    
+    public void update() {
+        x += dx;
+        y += dy;
+        
+        if (x < 0) {
+            x = 0;
+            dx = -dx;
+        } else if (x > 300) {
+            x = 300;
+            dx = -dx;
+        }
+        
+        if (y < 0) {
+            y = 0;
+            dy = -dy;
+        } else if (y > 300) {
+            y = 300;
+            dy = -dy;
+        }
+        
+        life--;
+    }
+    
+    public boolean isAlive() {
+        return life > 0;
+    }
 }
